@@ -1,36 +1,131 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CoinStat Sol
 
-## Getting Started
+A local-first Solana portfolio tracker for **unlimited wallets** in a single window.
+Built with Next.js 14 + TypeScript + SQLite (better-sqlite3) + TanStack Query + Recharts.
 
-First, run the development server:
+## Quick Start
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Open http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Layer | Tech |
+|-------|------|
+| Framework | Next.js 14 (App Router) |
+| Language | TypeScript |
+| Database | SQLite via better-sqlite3 (WAL mode) |
+| Data fetching | TanStack Query v5 (client-side) |
+| Charts | Recharts |
+| UI | Tailwind CSS + Radix UI primitives |
+| RPC | @solana/web3.js |
+| Prices | Jupiter Price API v4 + CoinGecko fallback |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Features
 
-## Learn More
+- **Unlimited wallet tracking** — add any number of Solana public keys
+- **Auto background sync** — wallets sync on startup + every 5 minutes
+- **Portfolio overview** — total USD value, SOL + token breakdown
+- **Token holdings table** — sortable, searchable, aggregated across all wallets
+- **Activity feed** — recent transactions with pagination
+- **Top movers** — 24h gainers/losers
+- **Charts** — portfolio value over time (7D/30D/90D) + allocation pie
+- **Per-wallet drilldown** — full details without opening new windows
+- **Import/Export** — CSV and JSON wallet lists
+- **Local-first** — everything stored in `data/coinstat.db`
 
-To learn more about Next.js, take a look at the following resources:
+## Configuration
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Env Var | Default | Description |
+|---------|---------|-------------|
+| `SOLANA_RPC_URL` | `https://api.mainnet-beta.solana.com` | Solana RPC endpoint |
+| `DB_PATH` | `./data/coinstat.db` | SQLite database file path |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Create `.env.local` to override:
+```
+SOLANA_RPC_URL=https://your-helius-or-quicknode-endpoint
+```
 
-## Deploy on Vercel
+> For best performance use a dedicated RPC provider (Helius, QuickNode, Alchemy) instead of the public endpoint.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Architecture
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+Browser (single tab)
+├── Sidebar: wallet list + nav
+└── Main panel: views (overview / tokens / activity / movers / per-wallet)
+    ↕ TanStack Query (30s polling)
+Next.js API Routes
+├── /api/wallets     - CRUD
+├── /api/portfolio   - Aggregated + per-wallet value
+├── /api/tokens      - Token holdings
+├── /api/transactions- Activity feed
+├── /api/prices      - Price cache
+├── /api/sync        - Trigger sync
+├── /api/export      - CSV/JSON export
+└── /api/import      - Bulk import
+    ↕
+Sync Engine (background, Node.js)
+├── Job queue (sync_jobs table)
+├── Solana RPC (balances, token accounts, transactions)
+└── Jupiter Price API (5-min TTL cache)
+    ↕
+SQLite (WAL mode, data/coinstat.db)
+├── wallets, sol_balances, token_accounts
+├── transactions, price_cache
+└── portfolio_snapshots, sync_jobs
+```
+
+## Running Tests
+
+```bash
+npm test
+# or watch mode:
+npm run test:watch
+```
+
+## Import Wallets
+
+**Via UI:** Click "Import wallets" in the sidebar.
+
+**JSON format:**
+```json
+[
+  { "address": "YourSolanaAddress...", "label": "My Wallet" },
+  { "address": "AnotherAddress...", "label": "DeFi Wallet" }
+]
+```
+
+**CSV format:**
+```
+address,label
+YourSolanaAddress...,My Wallet
+AnotherAddress...,DeFi Wallet
+```
+
+**Via API:**
+```bash
+curl -X POST http://localhost:3000/api/import \
+  -H "Content-Type: application/json" \
+  -d '{"wallets": [{"address": "...", "label": "..."}]}'
+```
+
+## Load Sample Wallets
+
+```bash
+curl -X POST http://localhost:3000/api/import \
+  -H "Content-Type: application/json" \
+  -d @data/sample-wallets.json
+```
+
+## Design Decisions
+
+- **No Electron/Tauri** — runs as localhost Next.js app; wrappable later in one step
+- **better-sqlite3** over Prisma — synchronous, 2-3x faster for batch wallet ops, no ORM overhead
+- **Incremental sync** — uses last-known signature as cursor; never re-fetches old transactions
+- **Job queue in SQLite** — survives restarts; retry with backoff (max 3 attempts)
+- **Price TTL** — 5-minute cache prevents rate-limit abuse across many wallets
+- **Read-only** — zero private key exposure; all operations use public addresses only

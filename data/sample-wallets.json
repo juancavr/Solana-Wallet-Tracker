@@ -1,0 +1,20 @@
+{
+  "_comment": "Sample Solana wallets for testing. These are well-known public addresses (no private keys).",
+  "wallets": [
+    {
+      "address": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+      "label": "Binance Hot Wallet",
+      "color": "#f97316"
+    },
+    {
+      "address": "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
+      "label": "Raydium AMM",
+      "color": "#6366f1"
+    },
+    {
+      "address": "GmCzMdCkHQa5dMTqnSHFkSoGnEinUJHdS5TY7sKJF7D7",
+      "label": "Test Wallet",
+      "color": "#22c55e"
+    }
+  ]
+}
