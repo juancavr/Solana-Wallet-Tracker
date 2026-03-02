@@ -6,7 +6,7 @@ import * as Collapsible from '@radix-ui/react-collapsible';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
   Wallet, Plus, RotateCcw, Download, Upload,
-  ChevronRight, ChevronDown, LayoutDashboard, Activity, Coins, TrendingUp,
+  ChevronRight, ChevronDown, LayoutDashboard, Activity, Coins,
   FolderPlus, MoreHorizontal, Pencil, Trash2, Layers,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,6 @@ const navItems = [
   { id: 'overview', icon: LayoutDashboard, label: 'Overview' },
   { id: 'tokens', icon: Coins, label: 'Holdings' },
   { id: 'activity', icon: Activity, label: 'Activity' },
-  { id: 'movers', icon: TrendingUp, label: 'Top Movers' },
 ];
 
 const GROUP_COLORS = [

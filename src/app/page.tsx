@@ -5,7 +5,6 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { OverviewCards } from '@/components/dashboard/OverviewCards';
 import { TokenTable } from '@/components/dashboard/TokenTable';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
-import { TopMovers } from '@/components/dashboard/TopMovers';
 import { PortfolioChart } from '@/components/dashboard/charts/PortfolioChart';
 import { AllocationPie } from '@/components/dashboard/charts/AllocationPie';
 import { WalletDetail } from '@/components/wallet/WalletDetail';
@@ -82,13 +81,6 @@ export default function Home() {
                 </>
               )}
 
-              {/* Top movers tab */}
-              {activeView === 'movers' && (
-                <>
-                  <OverviewCards groupId={selectedGroupId} />
-                  <TopMovers groupId={selectedGroupId} />
-                </>
-              )}
             </>
           )}
         </div>
