@@ -4,12 +4,12 @@ import fs from 'fs';
 
 declare global {
   // eslint-disable-next-line no-var
-  var __coinstatDb: Database.Database | undefined;
+  var __swtDb: Database.Database | undefined;
 }
 
 const DB_PATH =
   process.env.DB_PATH ||
-  path.join(process.cwd(), 'data', 'coinstat.db');
+  path.join(process.cwd(), 'data', 'tracker.db');
 
 function createDb(): Database.Database {
   const resolvedPath = process.env.DB_PATH || DB_PATH;
@@ -109,15 +109,30 @@ function initSchema(db: Database.Database): void {
     );
     CREATE INDEX IF NOT EXISTS idx_jobs_pending
       ON sync_jobs(status, updated_at);
+
+    CREATE TABLE IF NOT EXISTS wallet_groups (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      name       TEXT NOT NULL,
+      color      TEXT NOT NULL DEFAULT '#6366f1',
+      position   INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL
+    );
   `);
+
+  // Migration: add group_id to wallets if not present
+  const columns = db.prepare("PRAGMA table_info('wallets')").all() as { name: string }[];
+  if (!columns.some((c) => c.name === 'group_id')) {
+    db.exec('ALTER TABLE wallets ADD COLUMN group_id INTEGER REFERENCES wallet_groups(id) ON DELETE SET NULL');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_wallets_group ON wallets(group_id)');
+  }
 }
 
 export function getDb(): Database.Database {
   // Always use singleton — setup.ts tears it down in afterEach for tests
-  if (!global.__coinstatDb) {
-    global.__coinstatDb = createDb();
+  if (!global.__swtDb) {
+    global.__swtDb = createDb();
   }
-  return global.__coinstatDb;
+  return global.__swtDb;
 }
 
 export default getDb;

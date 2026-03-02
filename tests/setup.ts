@@ -7,10 +7,10 @@ process.env.DB_PATH = ':memory:';
 
 afterEach(() => {
   // Reset the global DB singleton between tests
-  if (global.__coinstatDb) {
+  if (global.__swtDb) {
     try {
-      global.__coinstatDb.close();
+      global.__swtDb.close();
     } catch {}
-    global.__coinstatDb = undefined;
+    global.__swtDb = undefined;
   }
 });

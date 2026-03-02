@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
+import type { WalletGroup } from '@/types';
 
 const COLORS = ['#6366f1','#8b5cf6','#ec4899','#f97316','#22c55e','#06b6d4','#f59e0b','#ef4444'];
 
@@ -16,13 +17,20 @@ export function AddWalletModal({ open, onClose }: Props) {
   const [address, setAddress] = useState('');
   const [label, setLabel] = useState('');
   const [color, setColor] = useState(COLORS[0]);
+  const [groupId, setGroupId] = useState<number | null>(null);
+
+  const { data: groupsData } = useQuery<{ groups: WalletGroup[] }>({
+    queryKey: ['groups'],
+    queryFn: () => fetch('/api/groups').then((r) => r.json()),
+  });
+  const groups = groupsData?.groups ?? [];
 
   const add = useMutation({
     mutationFn: async () => {
       const res = await fetch('/api/wallets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, label, color }),
+        body: JSON.stringify({ address, label, color, groupId }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Failed');
@@ -34,6 +42,7 @@ export function AddWalletModal({ open, onClose }: Props) {
       qc.invalidateQueries({ queryKey: ['wallets'] });
       setAddress('');
       setLabel('');
+      setGroupId(null);
       onClose();
     },
     onError: (err) => toast.error(String(err.message)),
@@ -95,6 +104,21 @@ export function AddWalletModal({ open, onClose }: Props) {
               ))}
             </div>
           </div>
+          {groups.length > 0 && (
+            <div>
+              <label className="text-xs text-muted-foreground mb-1.5 block">Group (optional)</label>
+              <select
+                className="w-full bg-muted border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                value={groupId ?? ''}
+                onChange={(e) => setGroupId(e.target.value ? parseInt(e.target.value, 10) : null)}
+              >
+                <option value="">No group</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex gap-2 pt-2">
             <Button type="button" variant="ghost" className="flex-1" onClick={onClose}>
               Cancel

@@ -13,11 +13,20 @@ import { RpcBanner } from '@/components/layout/RpcBanner';
 
 export default function Home() {
   const [selectedWalletId, setSelectedWalletId] = useState<number | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [activeView, setActiveView] = useState('overview');
 
   const handleSelectWallet = (id: number | null) => {
     setSelectedWalletId(id);
-    if (id !== null) setActiveView('overview');
+    if (id !== null) {
+      setActiveView('overview');
+      setSelectedGroupId(null);
+    }
+  };
+
+  const handleSelectGroup = (id: number | null) => {
+    setSelectedGroupId(id);
+    setSelectedWalletId(null);
   };
 
   return (
@@ -25,6 +34,8 @@ export default function Home() {
       <Sidebar
         selectedWalletId={selectedWalletId}
         onSelectWallet={handleSelectWallet}
+        selectedGroupId={selectedGroupId}
+        onSelectGroup={handleSelectGroup}
         activeView={activeView}
         onChangeView={setActiveView}
       />
@@ -45,12 +56,12 @@ export default function Home() {
               {/* Overview tab */}
               {activeView === 'overview' && (
                 <>
-                  <OverviewCards />
+                  <OverviewCards groupId={selectedGroupId} />
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="md:col-span-2">
-                      <PortfolioChart />
+                      <PortfolioChart groupId={selectedGroupId} />
                     </div>
-                    <AllocationPie />
+                    <AllocationPie groupId={selectedGroupId} />
                   </div>
                 </>
               )}
@@ -58,24 +69,24 @@ export default function Home() {
               {/* Holdings tab */}
               {activeView === 'tokens' && (
                 <>
-                  <OverviewCards />
-                  <TokenTable />
+                  <OverviewCards groupId={selectedGroupId} />
+                  <TokenTable groupId={selectedGroupId} />
                 </>
               )}
 
               {/* Activity tab */}
               {activeView === 'activity' && (
                 <>
-                  <OverviewCards />
-                  <ActivityFeed />
+                  <OverviewCards groupId={selectedGroupId} />
+                  <ActivityFeed groupId={selectedGroupId} />
                 </>
               )}
 
               {/* Top movers tab */}
               {activeView === 'movers' && (
                 <>
-                  <OverviewCards />
-                  <TopMovers />
+                  <OverviewCards groupId={selectedGroupId} />
+                  <TopMovers groupId={selectedGroupId} />
                 </>
               )}
             </>

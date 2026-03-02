@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatUSD } from '@/lib/utils';
 import type { TokenHolding } from '@/types';
 
-interface Props { walletId?: number | null; }
+interface Props { walletId?: number | null; groupId?: number | null; }
 
 const COLORS = ['#6366f1','#8b5cf6','#ec4899','#f97316','#22c55e','#06b6d4','#f59e0b','#ef4444','#a78bfa','#34d399'];
 
@@ -22,10 +22,14 @@ interface CustomTooltipProps {
   payload?: TooltipPayloadEntry[];
 }
 
-export function AllocationPie({ walletId }: Props) {
-  const url = walletId ? `/api/tokens?walletId=${walletId}` : '/api/tokens';
+export function AllocationPie({ walletId, groupId }: Props) {
+  const url = walletId
+    ? `/api/tokens?walletId=${walletId}`
+    : groupId
+    ? `/api/tokens?groupId=${groupId}`
+    : '/api/tokens';
   const { data, isLoading } = useQuery<{ tokens: TokenHolding[] }>({
-    queryKey: ['tokens', walletId],
+    queryKey: ['tokens', walletId, groupId],
     queryFn: () => fetch(url).then((r) => r.json()),
   });
 

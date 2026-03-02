@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTokenAccounts, getAllTokenAccounts, getSolBalance } from '@/lib/db/balances';
 import { listWallets } from '@/lib/db/wallets';
+import { getWalletIdsInGroup } from '@/lib/db/groups';
 import { getPrices, SOL_MINT } from '@/lib/prices/jupiter';
 import type { TokenHolding } from '@/types';
 
@@ -8,11 +9,19 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const walletIdParam = searchParams.get('walletId');
+    const groupIdParam = searchParams.get('groupId');
     const walletId = walletIdParam ? parseInt(walletIdParam, 10) : null;
+    const groupId = groupIdParam ? parseInt(groupIdParam, 10) : null;
 
-    const tokenAccs = walletId !== null
-      ? getTokenAccounts(walletId)
-      : getAllTokenAccounts();
+    let tokenAccs;
+    if (walletId !== null) {
+      tokenAccs = getTokenAccounts(walletId);
+    } else if (groupId !== null) {
+      const walletIds = getWalletIdsInGroup(groupId);
+      tokenAccs = walletIds.flatMap((wid) => getTokenAccounts(wid));
+    } else {
+      tokenAccs = getAllTokenAccounts();
+    }
 
     const mints = [...new Set(tokenAccs.map((t) => t.mint))];
     const prices = await getPrices([SOL_MINT, ...mints]);
@@ -66,6 +75,8 @@ export async function GET(req: NextRequest) {
     // Collect SOL balance(s) for the requested scope
     const walletsInScope = walletId !== null
       ? [walletId]
+      : groupId !== null
+      ? getWalletIdsInGroup(groupId)
       : listWallets().map((w) => w.id);
 
     let totalSol = 0;

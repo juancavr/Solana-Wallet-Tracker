@@ -3,12 +3,14 @@ import { listWallets } from '@/lib/db/wallets';
 import { getSolBalance, getTokenAccounts, getUniqueMints } from '@/lib/db/balances';
 import { getPrices, SOL_MINT } from '@/lib/prices/jupiter';
 import { getPortfolioHistory } from '@/lib/db/portfolio';
+import { getWalletIdsInGroup } from '@/lib/db/groups';
 import type { WalletWithBalance, PortfolioOverview } from '@/types';
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const walletId = searchParams.get('walletId');
+    const groupId = searchParams.get('groupId');
     const view = searchParams.get('view') ?? 'overview';
 
     const wallets = listWallets();
@@ -29,11 +31,17 @@ export async function GET(req: NextRequest) {
     const prices = await getPrices(mints);
     const solPrice = prices.get(SOL_MINT)?.price_usd ?? 0;
 
+    // Filter wallets by walletId or groupId
+    let filteredWallets = wallets;
+    if (walletId) {
+      filteredWallets = wallets.filter((w) => w.id === parseInt(walletId, 10));
+    } else if (groupId) {
+      const groupWalletIds = new Set(getWalletIdsInGroup(parseInt(groupId, 10)));
+      filteredWallets = wallets.filter((w) => groupWalletIds.has(w.id));
+    }
+
     // Build per-wallet data
     const walletsWithBalances: WalletWithBalance[] = [];
-    const filteredWallets = walletId
-      ? wallets.filter((w) => w.id === parseInt(walletId, 10))
-      : wallets;
 
     for (const w of filteredWallets) {
       const solBal = getSolBalance(w.id);
@@ -58,8 +66,12 @@ export async function GET(req: NextRequest) {
 
     if (view === 'history') {
       const days = parseInt(searchParams.get('days') ?? '30', 10);
-      const wid = walletId ? parseInt(walletId, 10) : null;
-      const history = getPortfolioHistory(wid, days);
+      if (walletId) {
+        const history = getPortfolioHistory(parseInt(walletId, 10), days);
+        return NextResponse.json({ history });
+      }
+      // For group or all: aggregate history (null = all wallets)
+      const history = getPortfolioHistory(null, days);
       return NextResponse.json({ history });
     }
 
@@ -71,7 +83,7 @@ export async function GET(req: NextRequest) {
       total_usd,
       sol_usd,
       tokens_usd,
-      wallet_count: wallets.length,
+      wallet_count: filteredWallets.length,
       token_count: new Set(mints).size,
       change_24h_pct: null,
       wallets: walletsWithBalances,

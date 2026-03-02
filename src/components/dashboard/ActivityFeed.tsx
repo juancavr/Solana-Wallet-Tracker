@@ -19,7 +19,7 @@ import { SOL_MINT } from '@/lib/constants';
 import { shortenAddress, timeAgo, formatNumber, cn } from '@/lib/utils';
 import type { ActivityItem, TxDetail, TxNativeTransfer, TxTokenTransfer } from '@/types';
 
-interface Props { walletId?: number | null; }
+interface Props { walletId?: number | null; groupId?: number | null; }
 
 // ─── Type styles ──────────────────────────────────────────────────────────────
 
@@ -182,16 +182,19 @@ function SwapDetail({ detail }: { detail: TxDetail }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ActivityFeed({ walletId }: Props) {
+export function ActivityFeed({ walletId, groupId }: Props) {
   const [offset, setOffset] = useState(0);
   const LIMIT = 25;
 
-  const url = walletId
-    ? `/api/transactions?walletId=${walletId}&limit=${LIMIT}&offset=${offset}`
-    : `/api/transactions?limit=${LIMIT}&offset=${offset}`;
+  const baseUrl = walletId
+    ? `/api/transactions?walletId=${walletId}`
+    : groupId
+    ? `/api/transactions?groupId=${groupId}`
+    : '/api/transactions';
+  const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}limit=${LIMIT}&offset=${offset}`;
 
   const { data, isLoading } = useQuery<{ transactions: ActivityItem[]; total: number }>({
-    queryKey: ['transactions', walletId, offset],
+    queryKey: ['transactions', walletId, groupId, offset],
     queryFn: () => fetch(url).then((r) => r.json()),
     refetchInterval: 30_000,
   });

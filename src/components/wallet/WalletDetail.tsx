@@ -10,7 +10,7 @@ import { TokenTable } from '@/components/dashboard/TokenTable';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { PortfolioChart } from '@/components/dashboard/charts/PortfolioChart';
 import { AllocationPie } from '@/components/dashboard/charts/AllocationPie';
-import type { Wallet } from '@/types';
+import type { Wallet, WalletGroup } from '@/types';
 import { toast } from 'sonner';
 
 interface Props {
@@ -28,6 +28,26 @@ export function WalletDetail({ walletId, onBack }: Props) {
     queryFn: () => fetch(`/api/wallets/${walletId}`).then((r) => r.json()),
   });
   const wallet = wData?.wallet;
+
+  const { data: groupsData } = useQuery<{ groups: WalletGroup[] }>({
+    queryKey: ['groups'],
+    queryFn: () => fetch('/api/groups').then((r) => r.json()),
+  });
+  const groups = groupsData?.groups ?? [];
+
+  const moveToGroupMut = useMutation({
+    mutationFn: (groupId: number | null) =>
+      fetch(`/api/wallets/${walletId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group_id: groupId }),
+      }).then((r) => r.json()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['wallet', walletId] });
+      qc.invalidateQueries({ queryKey: ['portfolio'] });
+      toast.success('Wallet moved');
+    },
+  });
 
   const syncMut = useMutation({
     mutationFn: () =>
@@ -124,7 +144,7 @@ export function WalletDetail({ walletId, onBack }: Props) {
           </Button>
         </div>
       </div>
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
         <span className="font-mono">{wallet.address}</span>
         <a
           href={`https://solscan.io/account/${wallet.address}`}
@@ -134,6 +154,22 @@ export function WalletDetail({ walletId, onBack }: Props) {
         >
           Solscan <ExternalLink className="w-3 h-3" />
         </a>
+        {groups.length > 0 && (
+          <>
+            <span className="text-border">|</span>
+            <span>Group:</span>
+            <select
+              className="bg-muted border border-border rounded px-2 py-0.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              value={wallet.group_id ?? ''}
+              onChange={(e) => moveToGroupMut.mutate(e.target.value ? parseInt(e.target.value, 10) : null)}
+            >
+              <option value="">None</option>
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </>
+        )}
       </div>
 
       {/* Dashboard content for this wallet */}

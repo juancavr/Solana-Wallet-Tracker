@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { formatUSD, cn } from '@/lib/utils';
 import type { PortfolioSnapshot } from '@/types';
 
-interface Props { walletId?: number | null; }
+interface Props { walletId?: number | null; groupId?: number | null; }
 
 const RANGES = [
   { label: '7D',  days: 7  },
@@ -77,15 +77,17 @@ function buildChartGrid(
   return grid;
 }
 
-export function PortfolioChart({ walletId }: Props) {
+export function PortfolioChart({ walletId, groupId }: Props) {
   const [days, setDays] = useState(30);
 
   const url = walletId
     ? `/api/portfolio?view=history&walletId=${walletId}&days=${days}`
+    : groupId
+    ? `/api/portfolio?view=history&groupId=${groupId}&days=${days}`
     : `/api/portfolio?view=history&days=${days}`;
 
   const { data, isLoading } = useQuery<{ history: PortfolioSnapshot[] }>({
-    queryKey: ['portfolio-history', walletId, days],
+    queryKey: ['portfolio-history', walletId, groupId, days],
     queryFn: () => fetch(url).then((r) => r.json()),
     refetchInterval: 120_000,
   });

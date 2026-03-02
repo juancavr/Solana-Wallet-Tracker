@@ -9,20 +9,24 @@ import { formatUSD, formatNumber, formatPct, cn } from '@/lib/utils';
 import { SOL_MINT } from '@/lib/constants';
 import type { TokenHolding } from '@/types';
 
-interface Props { walletId?: number | null; }
+interface Props { walletId?: number | null; groupId?: number | null; }
 
 type SortKey = 'total_usd' | 'price_usd' | 'total_ui_amount' | 'change_24h';
 type Filter = 'all' | 'priced' | 'unpriced';
 
-export function TokenTable({ walletId }: Props) {
+export function TokenTable({ walletId, groupId }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('total_usd');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
 
-  const url = walletId ? `/api/tokens?walletId=${walletId}` : '/api/tokens';
+  const url = walletId
+    ? `/api/tokens?walletId=${walletId}`
+    : groupId
+    ? `/api/tokens?groupId=${groupId}`
+    : '/api/tokens';
   const { data, isLoading } = useQuery<{ tokens: TokenHolding[] }>({
-    queryKey: ['tokens', walletId],
+    queryKey: ['tokens', walletId, groupId],
     queryFn: () => fetch(url).then((r) => r.json()),
     refetchInterval: 60_000,
   });

@@ -8,14 +8,18 @@ import { formatUSD, formatPct, cn } from '@/lib/utils';
 import type { PortfolioOverview } from '@/types';
 import { toast } from 'sonner';
 
-interface Props { walletId?: number | null; }
+interface Props { walletId?: number | null; groupId?: number | null; }
 
-export function OverviewCards({ walletId }: Props) {
+export function OverviewCards({ walletId, groupId }: Props) {
   const qc = useQueryClient();
-  const url = walletId ? `/api/portfolio?walletId=${walletId}` : '/api/portfolio';
+  const url = walletId
+    ? `/api/portfolio?walletId=${walletId}`
+    : groupId
+    ? `/api/portfolio?groupId=${groupId}`
+    : '/api/portfolio';
 
   const { data, isLoading, error } = useQuery<PortfolioOverview>({
-    queryKey: ['portfolio', walletId],
+    queryKey: ['portfolio', walletId, groupId],
     queryFn: () => fetch(url).then((r) => r.json()),
     refetchInterval: 60_000,
   });

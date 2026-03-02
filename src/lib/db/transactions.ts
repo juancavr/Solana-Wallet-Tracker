@@ -161,3 +161,42 @@ export function countTransactions(walletId?: number): number {
   const r = db.prepare('SELECT COUNT(*) as c FROM transactions').get() as { c: number };
   return r.c;
 }
+
+export function getGroupActivity(
+  walletIds: number[],
+  limit = 50,
+  offset = 0
+): ActivityItem[] {
+  if (walletIds.length === 0) return [];
+  const db = getDb();
+  const placeholders = walletIds.map(() => '?').join(',');
+  const rows = db
+    .prepare(
+      `SELECT
+        t.signature, t.block_time, t.wallet_id, t.type, t.status, t.fee,
+        t.raw_meta,
+        w.label   AS wallet_label,
+        w.address AS wallet_address
+       FROM transactions t
+       JOIN wallets w ON w.id = t.wallet_id
+       WHERE t.wallet_id IN (${placeholders})
+       ORDER BY t.block_time DESC NULLS LAST
+       LIMIT ? OFFSET ?`
+    )
+    .all(...walletIds, limit, offset) as (ActivityItem & { raw_meta: string | null })[];
+
+  return rows.map(({ raw_meta, ...row }) => ({
+    ...row,
+    detail: parseDetail(raw_meta),
+  }));
+}
+
+export function countGroupTransactions(walletIds: number[]): number {
+  if (walletIds.length === 0) return 0;
+  const db = getDb();
+  const placeholders = walletIds.map(() => '?').join(',');
+  const r = db
+    .prepare(`SELECT COUNT(*) as c FROM transactions WHERE wallet_id IN (${placeholders})`)
+    .get(...walletIds) as { c: number };
+  return r.c;
+}

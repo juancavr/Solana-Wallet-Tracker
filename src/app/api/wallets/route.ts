@@ -15,10 +15,11 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { address, label, color } = body as {
+    const { address, label, color, groupId } = body as {
       address: string;
       label?: string;
       color?: string;
+      groupId?: number;
     };
 
     if (!address) {
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid Solana address' }, { status: 400 });
     }
 
-    const wallet = addWallet(address, label ?? '', color);
+    const wallet = addWallet(address, label ?? '', color, groupId);
     // Trigger immediate sync
     enqueueJob(wallet.id, 'full');
 

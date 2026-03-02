@@ -1,4 +1,4 @@
-# CoinStat Sol
+# Solana Wallet Tracker
 
 A local-first Solana portfolio tracker for **unlimited wallets** in a single window.
 Built with Next.js 14 + TypeScript + SQLite (better-sqlite3) + TanStack Query + Recharts.
@@ -35,14 +35,14 @@ npm run dev
 - **Charts** — portfolio value over time (7D/30D/90D) + allocation pie
 - **Per-wallet drilldown** — full details without opening new windows
 - **Import/Export** — CSV and JSON wallet lists
-- **Local-first** — everything stored in `data/coinstat.db`
+- **Local-first** — everything stored in `data/tracker.db`
 
 ## Configuration
 
 | Env Var | Default | Description |
 |---------|---------|-------------|
 | `SOLANA_RPC_URL` | `https://api.mainnet-beta.solana.com` | Solana RPC endpoint |
-| `DB_PATH` | `./data/coinstat.db` | SQLite database file path |
+| `DB_PATH` | `./data/tracker.db` | SQLite database file path |
 
 Create `.env.local` to override:
 ```
@@ -73,7 +73,7 @@ Sync Engine (background, Node.js)
 ├── Solana RPC (balances, token accounts, transactions)
 └── Jupiter Price API (5-min TTL cache)
     ↕
-SQLite (WAL mode, data/coinstat.db)
+SQLite (WAL mode, data/tracker.db)
 ├── wallets, sol_balances, token_accounts
 ├── transactions, price_cache
 └── portfolio_snapshots, sync_jobs

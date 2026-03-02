@@ -6,10 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatUSD, formatPct, cn } from '@/lib/utils';
 import type { TokenHolding } from '@/types';
 
-export function TopMovers() {
+interface Props { groupId?: number | null; }
+
+export function TopMovers({ groupId }: Props) {
+  const url = groupId ? `/api/tokens?groupId=${groupId}` : '/api/tokens';
   const { data, isLoading } = useQuery<{ tokens: TokenHolding[] }>({
-    queryKey: ['tokens', null],
-    queryFn: () => fetch('/api/tokens').then((r) => r.json()),
+    queryKey: ['tokens', null, groupId],
+    queryFn: () => fetch(url).then((r) => r.json()),
     refetchInterval: 60_000,
   });
 

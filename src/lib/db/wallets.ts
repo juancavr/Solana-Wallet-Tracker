@@ -21,33 +21,30 @@ export function getWalletByAddress(address: string): Wallet | null {
   return (db.prepare('SELECT * FROM wallets WHERE address = ?').get(address) as Wallet) ?? null;
 }
 
-export function addWallet(address: string, label: string, color?: string): Wallet {
+export function addWallet(address: string, label: string, color?: string, groupId?: number | null): Wallet {
   const db = getDb();
   const existing = listWallets();
   const pickedColor = color ?? COLORS[existing.length % COLORS.length];
   const now = Date.now();
   const result = db
     .prepare(
-      'INSERT INTO wallets (address, label, color, created_at) VALUES (?, ?, ?, ?)'
+      'INSERT INTO wallets (address, label, color, group_id, created_at) VALUES (?, ?, ?, ?, ?)'
     )
-    .run(address.trim(), label.trim() || address.slice(0, 8), pickedColor, now);
+    .run(address.trim(), label.trim() || address.slice(0, 8), pickedColor, groupId ?? null, now);
   return getWallet(result.lastInsertRowid as number)!;
 }
 
 export function updateWallet(
   id: number,
-  patch: Partial<Pick<Wallet, 'label' | 'color'>>
+  patch: Partial<Pick<Wallet, 'label' | 'color' | 'group_id'>>
 ): Wallet | null {
   const db = getDb();
-  const fields = Object.keys(patch)
-    .filter((k) => ['label', 'color'].includes(k))
-    .map((k) => `${k} = ?`)
-    .join(', ');
-  if (!fields) return getWallet(id);
-  db.prepare(`UPDATE wallets SET ${fields} WHERE id = ?`).run(
-    ...Object.values(patch),
-    id
-  );
+  const allowed = ['label', 'color', 'group_id'] as const;
+  const entries = Object.entries(patch).filter(([k]) => (allowed as readonly string[]).includes(k));
+  if (entries.length === 0) return getWallet(id);
+  const fields = entries.map(([k]) => `${k} = ?`).join(', ');
+  const values = entries.map(([, v]) => v);
+  db.prepare(`UPDATE wallets SET ${fields} WHERE id = ?`).run(...values, id);
   return getWallet(id);
 }
 

@@ -1,8 +1,17 @@
+export interface WalletGroup {
+  id: number;
+  name: string;
+  color: string;
+  position: number;
+  created_at: number;
+}
+
 export interface Wallet {
   id: number;
   address: string;
   label: string;
   color: string;
+  group_id: number | null;
   created_at: number;
   last_synced_at: number | null;
   sync_cursor: string | null;

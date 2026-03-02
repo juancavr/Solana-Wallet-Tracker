@@ -1,19 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AlertTriangle, X, ExternalLink, Zap } from 'lucide-react';
 
 const RPC_LABEL = process.env.NEXT_PUBLIC_RPC_LABEL ?? '';
 const IS_PREMIUM = RPC_LABEL.length > 0 && RPC_LABEL !== 'Public RPC';
 
 export function RpcBanner() {
-  const [dismissed, setDismissed] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    // Premium RPC: auto-dismiss after first render (just flash the success state)
-    if (IS_PREMIUM) return false;
-    // Public RPC: respect user's previous dismissal
-    return !!localStorage.getItem('rpc-banner-dismissed');
-  });
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    if (!IS_PREMIUM) {
+      setDismissed(!!localStorage.getItem('rpc-banner-dismissed'));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (IS_PREMIUM && !dismissed) {
+      const t = setTimeout(() => setDismissed(true), 5_000);
+      return () => clearTimeout(t);
+    }
+  }, [dismissed]);
 
   const dismiss = () => {
     if (!IS_PREMIUM) {
@@ -21,13 +28,6 @@ export function RpcBanner() {
     }
     setDismissed(true);
   };
-
-  // Auto-dismiss the "connected" banner after 5 s
-  if (IS_PREMIUM && !dismissed) {
-    if (typeof window !== 'undefined') {
-      setTimeout(() => setDismissed(true), 5_000);
-    }
-  }
 
   if (dismissed) return null;
 
