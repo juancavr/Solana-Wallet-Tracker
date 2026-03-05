@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function DELETE(_req: NextRequest) {
+export async function DELETE() {
   try {
     const cleared = clearPendingJobs();
     return NextResponse.json({ cleared });
