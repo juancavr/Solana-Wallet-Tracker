@@ -7,7 +7,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
   Wallet, Plus, RotateCcw, Download, Upload,
   ChevronRight, ChevronDown, LayoutDashboard, Activity, Coins,
-  FolderPlus, MoreHorizontal, Pencil, Trash2, Layers,
+  FolderPlus, MoreHorizontal, Pencil, Trash2, Layers, Wrench,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -293,6 +293,12 @@ export function Sidebar({
     },
   });
 
+  const resetQueue = useMutation({
+    mutationFn: () => fetch('/api/sync', { method: 'DELETE' }).then((r) => r.json()),
+    onSuccess: (data) => toast.success(`Queue cleared (${data.cleared} jobs removed)`),
+    onError: () => toast.error('Failed to clear queue'),
+  });
+
   const deleteGroupMut = useMutation({
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/groups/${id}`, { method: 'DELETE' });
@@ -557,6 +563,23 @@ export function Sidebar({
           onClick={() => handleExport('csv')}
         >
           <Download className="w-3 h-3 mr-2" /> Export CSV
+        </Button>
+      </div>
+
+      {/* Admin utilities */}
+      <div className="border-t border-border p-2 space-y-1">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wide px-1 pb-0.5">
+          Admin
+        </p>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start text-muted-foreground h-8 text-xs hover:text-orange-400"
+          onClick={() => resetQueue.mutate()}
+          disabled={resetQueue.isPending}
+          title="Delete all pending and running sync jobs from the queue"
+        >
+          <Wrench className="w-3 h-3 mr-2" /> Reset sync queue
         </Button>
       </div>
 

@@ -94,3 +94,11 @@ export function cleanOldJobs(keepDays = 7): void {
   const cutoff = Date.now() - keepDays * 24 * 60 * 60 * 1000;
   db.prepare("DELETE FROM sync_jobs WHERE status IN ('done','failed') AND updated_at < ?").run(cutoff);
 }
+
+export function clearPendingJobs(): number {
+  const db = getDb();
+  const result = db
+    .prepare("DELETE FROM sync_jobs WHERE status IN ('pending', 'running')")
+    .run();
+  return result.changes;
+}

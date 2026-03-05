@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { enqueueJob, listJobs, countPendingJobs } from '@/lib/db/sync';
+import { enqueueJob, listJobs, countPendingJobs, clearPendingJobs } from '@/lib/db/sync';
 import { listWallets, getWallet } from '@/lib/db/wallets';
 import { processNextJob } from '@/lib/sync/engine';
 
@@ -10,6 +10,15 @@ export async function GET(req: NextRequest) {
     const jobs = walletId ? listJobs(parseInt(walletId, 10)) : listJobs();
     const pending = countPendingJobs();
     return NextResponse.json({ jobs, pending });
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
+}
+
+export async function DELETE(_req: NextRequest) {
+  try {
+    const cleared = clearPendingJobs();
+    return NextResponse.json({ cleared });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
