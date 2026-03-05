@@ -21,7 +21,6 @@ export function OverviewCards({ walletId, groupId }: Props) {
   const { data, isLoading, error } = useQuery<PortfolioOverview>({
     queryKey: ['portfolio', walletId, groupId],
     queryFn: () => fetch(url).then((r) => r.json()),
-    refetchInterval: 60_000,
   });
 
   const syncMut = useMutation({

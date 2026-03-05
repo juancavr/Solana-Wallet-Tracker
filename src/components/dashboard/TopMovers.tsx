@@ -13,7 +13,6 @@ export function TopMovers({ groupId }: Props) {
   const { data, isLoading } = useQuery<{ tokens: TokenHolding[] }>({
     queryKey: ['tokens', null, groupId],
     queryFn: () => fetch(url).then((r) => r.json()),
-    refetchInterval: 60_000,
   });
 
   const tokens = (data?.tokens ?? []).filter(

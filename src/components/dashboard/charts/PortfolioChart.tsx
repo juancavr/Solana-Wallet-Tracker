@@ -89,7 +89,6 @@ export function PortfolioChart({ walletId, groupId }: Props) {
   const { data, isLoading } = useQuery<{ history: PortfolioSnapshot[] }>({
     queryKey: ['portfolio-history', walletId, groupId, days],
     queryFn: () => fetch(url).then((r) => r.json()),
-    refetchInterval: 120_000,
   });
 
   const history  = data?.history ?? [];

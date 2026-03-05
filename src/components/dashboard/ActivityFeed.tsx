@@ -196,7 +196,6 @@ export function ActivityFeed({ walletId, groupId }: Props) {
   const { data, isLoading } = useQuery<{ transactions: ActivityItem[]; total: number }>({
     queryKey: ['transactions', walletId, groupId, offset],
     queryFn: () => fetch(url).then((r) => r.json()),
-    refetchInterval: 30_000,
   });
 
   const items = data?.transactions ?? [];
