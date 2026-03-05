@@ -28,7 +28,6 @@ export function TokenTable({ walletId, groupId }: Props) {
   const { data, isLoading } = useQuery<{ tokens: TokenHolding[] }>({
     queryKey: ['tokens', walletId, groupId],
     queryFn: () => fetch(url).then((r) => r.json()),
-    refetchInterval: 60_000,
   });
 
   const handleSort = (key: SortKey) => {

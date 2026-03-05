@@ -275,7 +275,6 @@ export function Sidebar({
   const { data: portfolio } = useQuery<PortfolioOverview>({
     queryKey: ['portfolio'],
     queryFn: () => fetch('/api/portfolio').then((r) => r.json()),
-    refetchInterval: 30_000,
   });
 
   const { data: groupsData } = useQuery<{ groups: WalletGroup[] }>({
