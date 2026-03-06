@@ -7,8 +7,8 @@ import {
 } from '@/lib/db/balances';
 import { upsertTransactionsBatch, getLatestSignature } from '@/lib/db/transactions';
 import { insertSnapshot } from '@/lib/db/portfolio';
-import { getPrices, SOL_MINT } from '@/lib/prices/jupiter';
-import { upsertPricesBatch } from '@/lib/db/prices';
+import { SOL_MINT } from '@/lib/constants';
+import { upsertPricesBatch, getAllCachedPrices } from '@/lib/db/prices';
 import {
   fetchSolBalance,
   fetchTokenAccounts,
@@ -228,8 +228,7 @@ async function takeSnapshot(walletId: number): Promise<void> {
     const solBal = getSolBalance(walletId);
     const tokenAccs = getTokenAccounts(walletId);
 
-    const walletMints = [SOL_MINT, ...tokenAccs.map((t) => t.mint)];
-    const prices = await getPrices(walletMints);
+    const prices = getAllCachedPrices();
 
     const solPrice = prices.get(SOL_MINT)?.price_usd ?? 0;
     const sol_usd = (solBal?.sol ?? 0) * solPrice;
@@ -258,13 +257,7 @@ async function takeSnapshot(walletId: number): Promise<void> {
     const { listWallets } = await import('@/lib/db/wallets');
     const allWallets = listWallets();
 
-    // Collect every unique mint across all wallets so one getPrices() call covers all
-    const allMints = new Set<string>([SOL_MINT]);
-    for (const w of allWallets) {
-      for (const t of getTokenAccounts(w.id)) allMints.add(t.mint);
-    }
-
-    const aggPrices  = await getPrices([...allMints]);
+    const aggPrices = getAllCachedPrices();
     const aggSolPrice = aggPrices.get(SOL_MINT)?.price_usd ?? 0;
 
     let agg_sol_usd    = 0;
