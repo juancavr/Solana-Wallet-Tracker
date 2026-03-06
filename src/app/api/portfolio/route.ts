@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listWallets } from '@/lib/db/wallets';
 import { getSolBalance, getTokenAccounts, getUniqueMints } from '@/lib/db/balances';
-import { getPrices, SOL_MINT } from '@/lib/prices/jupiter';
+import { getAllCachedPrices } from '@/lib/db/prices';
+import { SOL_MINT } from '@/lib/constants';
 import { getPortfolioHistory } from '@/lib/db/portfolio';
 import { getWalletIdsInGroup } from '@/lib/db/groups';
 import type { WalletWithBalance, PortfolioOverview } from '@/types';
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
 
     // Fetch all prices
     const mints = getUniqueMints();
-    const prices = await getPrices(mints);
+    const prices = getAllCachedPrices();
     const solPrice = prices.get(SOL_MINT)?.price_usd ?? 0;
 
     // Filter wallets by walletId or groupId

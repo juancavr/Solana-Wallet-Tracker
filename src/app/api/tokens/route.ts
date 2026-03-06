@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getTokenAccounts, getAllTokenAccounts, getSolBalance } from '@/lib/db/balances';
 import { listWallets } from '@/lib/db/wallets';
 import { getWalletIdsInGroup } from '@/lib/db/groups';
-import { getPrices, SOL_MINT } from '@/lib/prices/jupiter';
+import { getAllCachedPrices } from '@/lib/db/prices';
+import { SOL_MINT } from '@/lib/constants';
 import type { TokenHolding } from '@/types';
 
 export async function GET(req: NextRequest) {
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
     }
 
     const mints = [...new Set(tokenAccs.map((t) => t.mint))];
-    const prices = await getPrices([SOL_MINT, ...mints]);
+    const prices = getAllCachedPrices();
 
     // ── Aggregate SPL/Token-2022 tokens by mint ──────────────────────────────
     const mintMap = new Map<string, {
