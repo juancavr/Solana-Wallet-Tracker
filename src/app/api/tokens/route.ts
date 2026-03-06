@@ -24,7 +24,6 @@ export async function GET(req: NextRequest) {
       tokenAccs = getAllTokenAccounts();
     }
 
-    const mints = [...new Set(tokenAccs.map((t) => t.mint))];
     const prices = getAllCachedPrices();
 
     // ── Aggregate SPL/Token-2022 tokens by mint ──────────────────────────────
