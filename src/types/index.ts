@@ -141,6 +141,7 @@ export interface TxDetail {
   description:      string;   // Human-readable from Helius
   source:           string;   // 'Jupiter', 'System Program', etc.
   fee_sol:          number;
+  helius_type?:     string;   // Raw Helius type: 'CASHBACK' | 'COLLECT_COIN_CREATOR_FEE' | …
   native_transfers: TxNativeTransfer[];
   token_transfers:  TxTokenTransfer[];
   swap?:            TxSwap;

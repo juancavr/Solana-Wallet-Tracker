@@ -9,6 +9,7 @@ import { PortfolioChart } from '@/components/dashboard/charts/PortfolioChart';
 import { AllocationPie } from '@/components/dashboard/charts/AllocationPie';
 import { WalletDetail } from '@/components/wallet/WalletDetail';
 import { RpcBanner } from '@/components/layout/RpcBanner';
+import { AirdropSummary } from '@/components/dashboard/AirdropSummary';
 
 export default function Home() {
   const [selectedWalletId, setSelectedWalletId] = useState<number | null>(null);
@@ -62,6 +63,7 @@ export default function Home() {
                     </div>
                     <AllocationPie groupId={selectedGroupId} />
                   </div>
+                  <AirdropSummary groupId={selectedGroupId} />
                 </>
               )}
 
