@@ -200,3 +200,70 @@ export function countGroupTransactions(walletIds: number[]): number {
     .get(...walletIds) as { c: number };
   return r.c;
 }
+
+// ─── Airdrop (cashback + creator fees) aggregation ───────────────────────────
+
+export interface WalletAirdropRow {
+  wallet_id:       number;
+  wallet_label:    string;
+  wallet_address:  string;
+  cashback_sol:    number;
+  creator_fee_sol: number;
+  total_sol:       number;
+}
+
+export function getAirdropSummary(walletIds?: number[]): WalletAirdropRow[] {
+  const db = getDb();
+
+  const whereWallets = walletIds && walletIds.length > 0
+    ? `AND t.wallet_id IN (${walletIds.map(() => '?').join(',')})`
+    : '';
+
+  const rows = db.prepare(`
+    SELECT t.wallet_id, t.raw_meta, w.address, w.label
+    FROM transactions t
+    JOIN wallets w ON w.id = t.wallet_id
+    WHERE t.status = 'success'
+      AND t.raw_meta IS NOT NULL
+      AND (
+        json_extract(t.raw_meta, '$.helius_type') IN ('CASHBACK', 'COLLECT_COIN_CREATOR_FEE')
+        OR lower(json_extract(t.raw_meta, '$.description')) LIKE '%cashback%'
+        OR lower(json_extract(t.raw_meta, '$.description')) LIKE '%creator fee%'
+        OR lower(json_extract(t.raw_meta, '$.description')) LIKE '%creator_fee%'
+      )
+      ${whereWallets}
+  `).all(...(walletIds ?? [])) as { wallet_id: number; raw_meta: string; address: string; label: string }[];
+
+  const map = new Map<number, WalletAirdropRow>();
+
+  for (const row of rows) {
+    const detail = parseDetail(row.raw_meta);
+    if (!detail) continue;
+
+    const heliusType   = detail.helius_type ?? '';
+    const desc         = (detail.description ?? '').toLowerCase();
+    const isCashback   = heliusType === 'CASHBACK'                 || desc.includes('cashback');
+    const isCreatorFee = heliusType === 'COLLECT_COIN_CREATOR_FEE' || desc.includes('creator fee') || desc.includes('creator_fee');
+    if (!isCashback && !isCreatorFee) continue;
+
+    const receivedSol = (detail.native_transfers ?? [])
+      .filter((nt) => nt.to === row.address)
+      .reduce((sum, nt) => sum + nt.amount_sol, 0);
+
+    if (!map.has(row.wallet_id)) {
+      map.set(row.wallet_id, {
+        wallet_id:       row.wallet_id,
+        wallet_label:    row.label,
+        wallet_address:  row.address,
+        cashback_sol:    0,
+        creator_fee_sol: 0,
+        total_sol:       0,
+      });
+    }
+    const entry = map.get(row.wallet_id)!;
+    if (isCashback)   entry.cashback_sol    += receivedSol;
+    if (isCreatorFee) entry.creator_fee_sol += receivedSol;
+  }
+
+  return [...map.values()].map((e) => ({ ...e, total_sol: e.cashback_sol + e.creator_fee_sol }));
+}

@@ -246,6 +246,7 @@ function parseEnhancedTx(htx: HeliusEnhancedTx): TxDetail {
     description:      htx.description || '',
     source,
     fee_sol,
+    helius_type:      htx.type,
     native_transfers,
     token_transfers,
     swap,
