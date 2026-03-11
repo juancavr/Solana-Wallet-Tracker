@@ -1,5 +1,6 @@
 import { getDb } from './index';
 import type { Transaction, ActivityItem, TxDetail } from '@/types';
+import { SOL_MINT } from '@/lib/constants';
 
 // ─── Insert / upsert ──────────────────────────────────────────────────────────
 
@@ -230,6 +231,12 @@ export function getAirdropSummary(walletIds?: number[]): WalletAirdropRow[] {
         OR lower(json_extract(t.raw_meta, '$.description')) LIKE '%cashback%'
         OR lower(json_extract(t.raw_meta, '$.description')) LIKE '%creator fee%'
         OR lower(json_extract(t.raw_meta, '$.description')) LIKE '%creator_fee%'
+        -- Pump.fun AMM collect_coin_creator_fee arrives as UNKNOWN type from Helius
+        OR (
+          json_extract(t.raw_meta, '$.helius_type') = 'UNKNOWN'
+          AND json_extract(t.raw_meta, '$.source') LIKE '%Pump%'
+          AND json_extract(t.raw_meta, '$.swap') IS NULL
+        )
       )
       ${whereWallets}
   `).all(...(walletIds ?? [])) as { wallet_id: number; raw_meta: string; address: string; label: string }[];
@@ -242,13 +249,24 @@ export function getAirdropSummary(walletIds?: number[]): WalletAirdropRow[] {
 
     const heliusType   = detail.helius_type ?? '';
     const desc         = (detail.description ?? '').toLowerCase();
+    const source       = detail.source ?? '';
     const isCashback   = heliusType === 'CASHBACK'                 || desc.includes('cashback');
     const isCreatorFee = heliusType === 'COLLECT_COIN_CREATOR_FEE' || desc.includes('creator fee') || desc.includes('creator_fee');
-    if (!isCashback && !isCreatorFee) continue;
+    // Pump.fun AMM collect_coin_creator_fee: Helius returns UNKNOWN type with no swap event
+    const isPumpFeeCollection = heliusType === 'UNKNOWN' && source.toLowerCase().includes('pump') && !detail.swap;
+    if (!isCashback && !isCreatorFee && !isPumpFeeCollection) continue;
 
+    // Sum native SOL received + WSOL token transfers (WSOL amount is already in SOL units)
     const receivedSol = (detail.native_transfers ?? [])
       .filter((nt) => nt.to === row.address)
       .reduce((sum, nt) => sum + nt.amount_sol, 0);
+    const receivedWsol = (detail.token_transfers ?? [])
+      .filter((tt) => tt.to === row.address && tt.mint === SOL_MINT)
+      .reduce((sum, tt) => sum + tt.amount, 0);
+    const totalReceived = receivedSol + receivedWsol;
+
+    // For Pump.fun fee collections, require actual SOL/WSOL received to avoid false positives
+    if (isPumpFeeCollection && totalReceived <= 0) continue;
 
     if (!map.has(row.wallet_id)) {
       map.set(row.wallet_id, {
@@ -261,8 +279,8 @@ export function getAirdropSummary(walletIds?: number[]): WalletAirdropRow[] {
       });
     }
     const entry = map.get(row.wallet_id)!;
-    if (isCashback)   entry.cashback_sol    += receivedSol;
-    if (isCreatorFee) entry.creator_fee_sol += receivedSol;
+    if (isCashback)                       entry.cashback_sol    += totalReceived;
+    if (isCreatorFee || isPumpFeeCollection) entry.creator_fee_sol += totalReceived;
   }
 
   return [...map.values()].map((e) => ({ ...e, total_sol: e.cashback_sol + e.creator_fee_sol }));
