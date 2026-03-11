@@ -230,7 +230,7 @@ export function getAirdropSummary(walletIds?: number[]): WalletAirdropRow[] {
         OR lower(json_extract(t.raw_meta, '$.description')) LIKE '%cashback%'
         OR lower(json_extract(t.raw_meta, '$.description')) LIKE '%creator fee%'
         OR lower(json_extract(t.raw_meta, '$.description')) LIKE '%creator_fee%'
-        -- Pump.fun collect_creator_fee / collect_coin_creator_fee: Helius returns type=WITHDRAW
+        -- Pump.fun: WITHDRAW = creator fee, UNKNOWN = cashback (both have no description)
         OR (
           json_extract(t.raw_meta, '$.helius_type') IN ('WITHDRAW', 'UNKNOWN')
           AND json_extract(t.raw_meta, '$.source') LIKE '%Pump%'
@@ -246,23 +246,29 @@ export function getAirdropSummary(walletIds?: number[]): WalletAirdropRow[] {
     const detail = parseDetail(row.raw_meta);
     if (!detail) continue;
 
-    const heliusType   = detail.helius_type ?? '';
-    const desc         = (detail.description ?? '').toLowerCase();
-    const source       = detail.source ?? '';
-    const isCashback   = heliusType === 'CASHBACK'                 || desc.includes('cashback');
-    const isCreatorFee = heliusType === 'COLLECT_COIN_CREATOR_FEE' || desc.includes('creator fee') || desc.includes('creator_fee');
-    // Pump.fun collect_creator_fee / collect_coin_creator_fee: Helius returns type=WITHDRAW (or UNKNOWN)
-    const isPumpFeeCollection = (heliusType === 'WITHDRAW' || heliusType === 'UNKNOWN') && source.toLowerCase().includes('pump') && !detail.swap;
-    if (!isCashback && !isCreatorFee && !isPumpFeeCollection) continue;
+    const heliusType = detail.helius_type ?? '';
+    const desc       = (detail.description ?? '').toLowerCase();
+    const source     = detail.source ?? '';
+    const isPump     = source.toLowerCase().includes('pump');
 
-    // Sum native SOL received. WSOL is already included via the ATA-close native transfer,
-    // so we do NOT add token_transfers for SOL_MINT to avoid double-counting.
-    const totalReceived = (detail.native_transfers ?? [])
-      .filter((nt) => nt.to === row.address)
-      .reduce((sum, nt) => sum + nt.amount_sol, 0);
+    // Pump.fun cashback: Helius type=UNKNOWN, no native/token transfers — amount only in accountData
+    const isCashback   = heliusType === 'CASHBACK' || desc.includes('cashback')
+                      || (heliusType === 'UNKNOWN' && isPump && !detail.swap);
+    // Pump.fun creator-fee (collect_creator_fee / collect_coin_creator_fee): type=WITHDRAW
+    const isCreatorFee = heliusType === 'COLLECT_COIN_CREATOR_FEE'
+                      || desc.includes('creator fee') || desc.includes('creator_fee')
+                      || (heliusType === 'WITHDRAW' && isPump && !detail.swap);
+    if (!isCashback && !isCreatorFee) continue;
 
-    // For Pump.fun fee collections, require actual SOL/WSOL received to avoid false positives
-    if (isPumpFeeCollection && totalReceived <= 0) continue;
+    // Prefer feePayer_sol_change (exact net from accountData) over summing native_transfers.
+    // Falls back to native_transfers for records parsed before this field was added.
+    const fpChange = detail.feePayer_sol_change ?? 0;
+    const totalReceived = fpChange > 0
+      ? fpChange
+      : (detail.native_transfers ?? [])
+          .filter((nt) => nt.to === row.address)
+          .reduce((sum, nt) => sum + nt.amount_sol, 0);
+    if (totalReceived <= 0) continue;
 
     if (!map.has(row.wallet_id)) {
       map.set(row.wallet_id, {
@@ -275,8 +281,8 @@ export function getAirdropSummary(walletIds?: number[]): WalletAirdropRow[] {
       });
     }
     const entry = map.get(row.wallet_id)!;
-    if (isCashback)                       entry.cashback_sol    += totalReceived;
-    if (isCreatorFee || isPumpFeeCollection) entry.creator_fee_sol += totalReceived;
+    if (isCashback)    entry.cashback_sol    += totalReceived;
+    if (isCreatorFee)  entry.creator_fee_sol += totalReceived;
   }
 
   return [...map.values()].map((e) => ({ ...e, total_sol: e.cashback_sol + e.creator_fee_sol }));

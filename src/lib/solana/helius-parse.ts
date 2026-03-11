@@ -242,11 +242,18 @@ function parseEnhancedTx(htx: HeliusEnhancedTx): TxDetail {
     }
   }
 
+  // Net SOL change for the feePayer from accountData (excludes the tx fee itself)
+  const feePayerAccountData = htx.accountData?.find((a) => a.account === htx.feePayer);
+  const feePayer_sol_change  = feePayerAccountData !== undefined
+    ? feePayerAccountData.nativeBalanceChange / LAMPORTS_PER_SOL
+    : undefined;
+
   return {
     description:      htx.description || '',
     source,
     fee_sol,
     helius_type:      htx.type,
+    feePayer_sol_change,
     native_transfers,
     token_transfers,
     swap,
