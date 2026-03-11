@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import path from 'path';
+import fs from 'fs';
 import { getDb } from '@/lib/db/index';
 
 export async function GET() {
@@ -7,6 +8,17 @@ export async function GET() {
 
   // ── 0. DB diagnostics ────────────────────────────────────────────────────
   const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'data', 'tracker.db');
+  const dataDir = path.dirname(dbPath);
+  let fsInfo: Record<string, unknown> = {};
+  try {
+    const dataDirExists = fs.existsSync(dataDir);
+    const dbFileExists = fs.existsSync(dbPath);
+    const dbFileSize = dbFileExists ? fs.statSync(dbPath).size : null;
+    const dataDirContents = dataDirExists ? fs.readdirSync(dataDir) : [];
+    fsInfo = { dataDirExists, dbFileExists, dbFileSize, dataDirContents };
+  } catch (e) {
+    fsInfo = { error: String(e) };
+  }
   const walletList = db.prepare(`SELECT id, address, label, created_at FROM wallets LIMIT 20`).all();
 
   // ── 1. Transaction counts (total vs enriched) ────────────────────────────
@@ -83,6 +95,7 @@ export async function GET() {
   return NextResponse.json({
     db_path: dbPath,
     cwd: process.cwd(),
+    fs: fsInfo,
     wallets: walletList,
     counts: {
       wallets: walletCount,
