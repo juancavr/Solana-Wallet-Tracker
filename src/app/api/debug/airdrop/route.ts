@@ -14,10 +14,26 @@ export async function GET() {
     const dataDirExists = fs.existsSync(dataDir);
     const dbFileExists = fs.existsSync(dbPath);
     const dbFileSize = dbFileExists ? fs.statSync(dbPath).size : null;
+    const walPath = dbPath + '-wal';
+    const walSize = fs.existsSync(walPath) ? fs.statSync(walPath).size : null;
+    const shmPath = dbPath + '-shm';
+    const shmSize = fs.existsSync(shmPath) ? fs.statSync(shmPath).size : null;
     const dataDirContents = dataDirExists ? fs.readdirSync(dataDir) : [];
-    fsInfo = { dataDirExists, dbFileExists, dbFileSize, dataDirContents };
+    // Also check if there's a DB at the default CWD path
+    const cwdDbPath = path.join(process.cwd(), 'data', 'tracker.db');
+    const cwdDbExists = fs.existsSync(cwdDbPath);
+    const cwdDbSize = cwdDbExists ? fs.statSync(cwdDbPath).size : null;
+    fsInfo = { dataDirExists, dbFileExists, dbFileSize, walSize, shmSize, dataDirContents, cwdDbPath, cwdDbExists, cwdDbSize };
   } catch (e) {
     fsInfo = { error: String(e) };
+  }
+
+  // Force WAL checkpoint to merge WAL into main file
+  let checkpointResult: unknown = null;
+  try {
+    checkpointResult = db.pragma('wal_checkpoint(FULL)');
+  } catch (e) {
+    checkpointResult = String(e);
   }
   const walletList = db.prepare(`SELECT id, address, label, created_at FROM wallets LIMIT 20`).all();
 
@@ -96,6 +112,7 @@ export async function GET() {
     db_path: dbPath,
     cwd: process.cwd(),
     fs: fsInfo,
+    checkpoint: checkpointResult,
     wallets: walletList,
     counts: {
       wallets: walletCount,
