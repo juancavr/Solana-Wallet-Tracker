@@ -1,6 +1,5 @@
 import { getDb } from './index';
 import type { Transaction, ActivityItem, TxDetail } from '@/types';
-import { SOL_MINT } from '@/lib/constants';
 
 // ─── Insert / upsert ──────────────────────────────────────────────────────────
 
@@ -231,9 +230,9 @@ export function getAirdropSummary(walletIds?: number[]): WalletAirdropRow[] {
         OR lower(json_extract(t.raw_meta, '$.description')) LIKE '%cashback%'
         OR lower(json_extract(t.raw_meta, '$.description')) LIKE '%creator fee%'
         OR lower(json_extract(t.raw_meta, '$.description')) LIKE '%creator_fee%'
-        -- Pump.fun AMM collect_coin_creator_fee arrives as UNKNOWN type from Helius
+        -- Pump.fun collect_creator_fee / collect_coin_creator_fee: Helius returns type=WITHDRAW
         OR (
-          json_extract(t.raw_meta, '$.helius_type') = 'UNKNOWN'
+          json_extract(t.raw_meta, '$.helius_type') IN ('WITHDRAW', 'UNKNOWN')
           AND json_extract(t.raw_meta, '$.source') LIKE '%Pump%'
           AND json_extract(t.raw_meta, '$.swap') IS NULL
         )
@@ -252,18 +251,15 @@ export function getAirdropSummary(walletIds?: number[]): WalletAirdropRow[] {
     const source       = detail.source ?? '';
     const isCashback   = heliusType === 'CASHBACK'                 || desc.includes('cashback');
     const isCreatorFee = heliusType === 'COLLECT_COIN_CREATOR_FEE' || desc.includes('creator fee') || desc.includes('creator_fee');
-    // Pump.fun AMM collect_coin_creator_fee: Helius returns UNKNOWN type with no swap event
-    const isPumpFeeCollection = heliusType === 'UNKNOWN' && source.toLowerCase().includes('pump') && !detail.swap;
+    // Pump.fun collect_creator_fee / collect_coin_creator_fee: Helius returns type=WITHDRAW (or UNKNOWN)
+    const isPumpFeeCollection = (heliusType === 'WITHDRAW' || heliusType === 'UNKNOWN') && source.toLowerCase().includes('pump') && !detail.swap;
     if (!isCashback && !isCreatorFee && !isPumpFeeCollection) continue;
 
-    // Sum native SOL received + WSOL token transfers (WSOL amount is already in SOL units)
-    const receivedSol = (detail.native_transfers ?? [])
+    // Sum native SOL received. WSOL is already included via the ATA-close native transfer,
+    // so we do NOT add token_transfers for SOL_MINT to avoid double-counting.
+    const totalReceived = (detail.native_transfers ?? [])
       .filter((nt) => nt.to === row.address)
       .reduce((sum, nt) => sum + nt.amount_sol, 0);
-    const receivedWsol = (detail.token_transfers ?? [])
-      .filter((tt) => tt.to === row.address && tt.mint === SOL_MINT)
-      .reduce((sum, tt) => sum + tt.amount, 0);
-    const totalReceived = receivedSol + receivedWsol;
 
     // For Pump.fun fee collections, require actual SOL/WSOL received to avoid false positives
     if (isPumpFeeCollection && totalReceived <= 0) continue;
