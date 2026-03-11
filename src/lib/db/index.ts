@@ -135,4 +135,11 @@ export function getDb(): Database.Database {
   return global.__swtDb;
 }
 
+export function closeDb(): void {
+  if (global.__swtDb) {
+    global.__swtDb.close();
+    global.__swtDb = undefined;
+  }
+}
+
 export default getDb;
