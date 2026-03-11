@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
+import path from 'path';
 import { getDb } from '@/lib/db/index';
 
 export async function GET() {
   const db = getDb();
+
+  // ── 0. DB diagnostics ────────────────────────────────────────────────────
+  const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'data', 'tracker.db');
+  const walletList = db.prepare(`SELECT id, address, label, created_at FROM wallets LIMIT 20`).all();
 
   // ── 1. Transaction counts (total vs enriched) ────────────────────────────
   const totalTxs        = (db.prepare(`SELECT COUNT(*) as c FROM transactions`).get() as { c: number }).c;
@@ -76,6 +81,9 @@ export async function GET() {
   `).all() as { signature: string; status: string | null; source: string; helius_type: string | null; description: string }[];
 
   return NextResponse.json({
+    db_path: dbPath,
+    cwd: process.cwd(),
+    wallets: walletList,
     counts: {
       wallets: walletCount,
       total_transactions: totalTxs,
